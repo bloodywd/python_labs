@@ -1,4 +1,3 @@
-from model import BlockType
 import tkinter as tk
 
 

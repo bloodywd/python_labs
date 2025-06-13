@@ -7,6 +7,7 @@ class BlockType(Enum):
     STRAIGHT = 0
     CORNER = 1
 
+
 class Block:
     def __init__(self, block_type, rotation=random.randint(0, 3), is_lit=False):
         self.block_type = block_type
@@ -82,13 +83,14 @@ class GameBoardModel:
             return CORNER_ROTATIONS[conns], BlockType.CORNER
 
     def create_board(self):
-        connections = self.generate_connections_path()
+        connections = self.path_to_connections(self.generate_slice_path())
 
         for i in range(self.size):
             row = []
             for j in range(self.size):
                 conns = connections[i][j]
-                rotation, block_type = GameBoardModel.get_block_type_and_rotation(tuple(sorted(conns)))
+                rotation, block_type = GameBoardModel.get_block_type_and_rotation(
+                    tuple(sorted(conns)))
 
                 block = Block(block_type, rotation)
                 row.append(block)
@@ -102,27 +104,67 @@ class GameBoardModel:
 
         self.update_lightning()
 
-    def generate_connections_path(self):
+    def generate_slice_path(self):
+        size = self.size
+        path = []
+
+        def slice(start_point, width, height, offset=(0, 0)):
+            nonlocal path
+            offset_x, offset_y = offset
+            x, y = start_point
+
+            if width <= 0 or height <= 0:
+                return
+
+            direction = random.choice(["x", "y"]) if (
+                        width > 1 and height > 1) else "x" if width > height else "y"
+
+            if direction == "y":
+                step = 1 if y == 0 else -1
+                end = width if step == 1 else -1
+                while y != end:
+                    path.append((x + offset_x, y + offset_y))
+                    y += step
+
+                new_width = width
+                new_height = height - 1
+                new_offset = (offset_x + 1, offset_y) if x == 0 else (offset_x, offset_y)
+                new_start = (0 if x == 0 else new_height - 1,
+                             new_width - 1 if step == 1 else 0)
+
+            else:
+                step = 1 if x == 0 else -1
+                end = height if step == 1 else -1
+                while x != end:
+                    path.append((x + offset_x, y + offset_y))
+                    x += step
+
+                new_width = width - 1
+                new_height = height
+                new_offset = (offset_x, offset_y + 1) if y == 0 else (offset_x, offset_y)
+                new_start = (new_height - 1 if step == 1 else 0,
+                             0 if y == 0 else new_width - 1)
+
+            slice(new_start, new_width, new_height, new_offset)
+
+        slice((0, 0), size, size)
+        return path
+
+    def path_to_connections(self, path):
         connections = [[[] for _ in range(self.size)] for _ in
                        range(self.size)]
 
-        for i in range(self.size):
-            if i % 2 == 0:
-                for j in range(self.size - 1):
-                    connections[i][j].append('right')
-                    connections[i][j + 1].append('left')
-            else:
-                for j in range(self.size - 1, 0, -1):
-                    connections[i][j].append('left')
-                    connections[i][j - 1].append('right')
+        for idx in range(len(path) - 1):
+            i1, j1 = path[idx]
+            i2, j2 = path[idx + 1]
+            di, dj = i2 - i1, j2 - j1
 
-            if i < self.size - 1:
-                if i % 2 == 0:
-                    connections[i][self.size - 1].append('down')
-                    connections[i + 1][self.size - 1].append('up')
-                else:
-                    connections[i][0].append('down')
-                    connections[i + 1][0].append('up')
+            for dir_name, (ddi, ddj) in self.DIRECTIONS.items():
+                if (di, dj) == (ddi, ddj):
+                    connections[i1][j1].append(dir_name)
+                    connections[i2][j2].append(
+                        self.OPPOSITE_DIRECTIONS[dir_name])
+                    break
 
         return connections
 
@@ -130,7 +172,7 @@ class GameBoardModel:
         return self.grid
 
     def set_board_to_solved(self):
-        self.grid=self.solved_grid
+        self.grid = self.solved_grid
         self.update_lightning()
 
     def get_size(self):
