@@ -111,7 +111,7 @@ class GameBoardModel:
                 for j in range(self.size - 1):
                     connections[i][j].append('right')
                     connections[i][j + 1].append('left')
-            else:  # Нечетные строки - справа налево
+            else:
                 for j in range(self.size - 1, 0, -1):
                     connections[i][j].append('left')
                     connections[i][j - 1].append('right')
